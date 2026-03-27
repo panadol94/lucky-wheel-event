@@ -1,13 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/store'
 
-const CheckSchema = {
-  whatsappNumber: zod.string().min(5).max(20),
-  agentId: zod.string().min(1).max(100),
-}
-
-import { z } from 'zod'
-
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()

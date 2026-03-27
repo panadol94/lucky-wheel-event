@@ -408,7 +408,7 @@ export default function AdminPanel() {
         {/* SETTINGS TAB */}
         {tab === 'settings' && settings && (
           <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,215,0,0.1)', borderRadius: '18px', padding: '24px' }}>
-            <h3 style={{ color: '#ffd700', fontSize: '16px', fontWeight: 800, margin: '0 0 20px' }}>            <h3 style={{ color: '#ffd700', fontSize: '16px', fontWeight: 800, margin: '0 0 20px' }}>⚙️ Tetapan Event</h3>
+            <h3 style={{ color: '#ffd700', fontSize: '16px', fontWeight: 800, margin: '0 0 20px' }}>⚙️ Tetapan Event</h3>
             <div style={{ display: 'grid', gap: '16px' }}>
               <div>
                 <label style={{ display: 'block', marginBottom: '6px', fontSize: '12px', color: 'rgba(255,255,255,0.6)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tajuk Event</label>

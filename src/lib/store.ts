@@ -32,6 +32,7 @@ export interface SpinRecord {
   userAgent: string
   spunAt: Date
   claimStatus: 'pending' | 'claimed' | 'rejected'
+  claimedAt?: Date
 }
 
 export interface EventSettings {
