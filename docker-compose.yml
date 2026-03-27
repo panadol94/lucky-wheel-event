@@ -1,0 +1,23 @@
+version: '3.8'
+services:
+  lw-event:
+    image: lucky-wheel-event:latest
+    container_name: lw-event
+    restart: unless-stopped
+    networks:
+      - coolify
+    ports:
+      - "3005:3000"
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.lw-wheel.rule=Host(`wheel.cm8vvip.com`)
+      - traefik.http.routers.lw-wheel.entrypoints=http
+      - traefik.http.services.lw-wheel.loadbalancer.server.port=3000
+      - traefik.http.routers.lw-wheel-secure.rule=Host(`wheel.cm8vvip.com`)
+      - traefik.http.routers.lw-wheel-secure.entrypoints=https
+      - traefik.http.routers.lw-wheel-secure.tls=true
+      - traefik.http.services.lw-wheel-secure.loadbalancer.server.port=3000
+
+networks:
+  coolify:
+    external: true

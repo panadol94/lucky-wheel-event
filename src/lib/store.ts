@@ -70,7 +70,7 @@ const DEFAULT_ADMIN: Admin = {
   id: 'admin-1',
   username: 'admin',
   // bcrypt hash of 'admin123'
-  passwordHash: '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
+  passwordHash: '$2a$10$izNGSSgdSuP0jytbCcV4R.ceTt7DsL3x3rPb3z.h8Cnn78PUdsyJm',
   name: 'Super Admin',
 }
 

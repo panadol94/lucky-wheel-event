@@ -1,14 +1,14 @@
 {
   "/_not-found/page": "app/_not-found/page.js",
+  "/api/admin/auth/route": "app/api/admin/auth/route.js",
   "/api/admin/prizes/route": "app/api/admin/prizes/route.js",
   "/api/admin/settings/route": "app/api/admin/settings/route.js",
-  "/api/admin/auth/route": "app/api/admin/auth/route.js",
   "/api/admin/spins/route": "app/api/admin/spins/route.js",
   "/api/admin/stats/route": "app/api/admin/stats/route.js",
+  "/api/admin/whitelist/route": "app/api/admin/whitelist/route.js",
   "/api/check/route": "app/api/check/route.js",
   "/api/prizes/route": "app/api/prizes/route.js",
   "/api/spin/route": "app/api/spin/route.js",
-  "/api/admin/whitelist/route": "app/api/admin/whitelist/route.js",
-  "/admin/page": "app/admin/page.js",
-  "/page": "app/page.js"
+  "/page": "app/page.js",
+  "/admin/page": "app/admin/page.js"
 }
