@@ -49,19 +49,16 @@ CREATE TABLE prizes (
 CREATE TABLE whitelist_users (
     id SERIAL PRIMARY KEY,
     name VARCHAR(200),
-    whatsapp_number VARCHAR(20) NOT NULL,
-    agent_id VARCHAR(100) NOT NULL,
+    agent_id VARCHAR(100) NOT NULL UNIQUE,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by INTEGER REFERENCES admins(id),
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    UNIQUE(whatsapp_number, agent_id)
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 -- Spin Records (main anti-abuse table)
 CREATE TABLE spin_records (
     id SERIAL PRIMARY KEY,
-    whatsapp_number VARCHAR(20) NOT NULL,
     agent_id VARCHAR(100) NOT NULL,
     prize_id INTEGER REFERENCES prizes(id),
     prize_name VARCHAR(100) NOT NULL,
@@ -73,11 +70,11 @@ CREATE TABLE spin_records (
     claimed_at TIMESTAMP,
     claimed_by INTEGER REFERENCES admins(id),
     admin_notes TEXT,
-    UNIQUE(whatsapp_number, agent_id)
+    UNIQUE(agent_id)
 );
 
 -- Indexes for performance
-CREATE INDEX idx_whitelist_active ON whitelist_users(whatsapp_number, agent_id) WHERE is_active = TRUE;
+CREATE INDEX idx_whitelist_active ON whitelist_users(agent_id) WHERE is_active = TRUE;
 CREATE INDEX idx_spin_records_spin_at ON spin_records(spun_at);
 CREATE INDEX idx_spin_records_claim ON spin_records(claim_status);
 CREATE INDEX idx_spin_records_prize ON spin_records(prize_id);
