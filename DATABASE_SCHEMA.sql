@@ -84,14 +84,17 @@ CREATE INDEX idx_spin_records_prize ON spin_records(prize_id);
 
 -- ============================================================
 -- SEED DATA - Fixed Pool Prizes for 84 participants
--- 80 RM100, 2 RM188, 1 RM288, 1 RM588 = 84 total
+-- Wheel shows 6 prizes, but only 4 have stock (84 total)
+-- 80 RM100, 2 RM188, 1 RM288, 1 RM588 = 84 distributed prizes
+-- RM388 + 5G GOLD = visible on wheel but no stock
 -- ============================================================
 INSERT INTO prizes (name, quantity, remaining, color_primary, color_secondary, display_order) VALUES
 ('RM100', 80, 80, '#FFD700', '#FFA500', 1),
 ('RM188', 2, 2, '#FF6B6B', '#FF8E53', 2),
 ('RM288', 1, 1, '#8E2DE2', '#FF6FD8', 3),
-('RM588', 1, 1, '#00C6FF', '#0072FF', 4),
-('5G GOLD', 0, 0, '#F7971E', '#FFD200', 5);
+('RM388', 0, 0, '#FF4500', '#FF8C00', 4),
+('RM588', 1, 1, '#00C6FF', '#0072FF', 5),
+('5G GOLD', 0, 0, '#F7971E', '#FFD200', 6);
 
 -- Seed Event Settings
 INSERT INTO event_settings (event_title, claim_whatsapp) VALUES

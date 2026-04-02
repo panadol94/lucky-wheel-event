@@ -51,13 +51,16 @@ export interface Admin {
 }
 
 // Seed data - Fixed Pool prizes for 84 participants
-// 80 RM100, 2 RM188, 1 RM288, 1 RM588 = 84 total
+// Wheel shows 6 prizes, but only 4 have stock (84 total)
+// 80 RM100, 2 RM188, 1 RM288, 1 RM588 = 84 distributed prizes
+// RM388 + 5G GOLD = visible on wheel but no stock (quantity 0)
 const DEFAULT_PRIZES: Prize[] = [
   { id: '1', name: 'RM100', quantity: 80, remaining: 80, colorPrimary: '#FFD700', colorSecondary: '#FFA500', isActive: true },
   { id: '2', name: 'RM188', quantity: 2, remaining: 2, colorPrimary: '#FF6B6B', colorSecondary: '#FF8E53', isActive: true },
   { id: '3', name: 'RM288', quantity: 1, remaining: 1, colorPrimary: '#8E2DE2', colorSecondary: '#FF6FD8', isActive: true },
-  { id: '4', name: 'RM588', quantity: 1, remaining: 1, colorPrimary: '#00C6FF', colorSecondary: '#0072FF', isActive: true },
-  { id: '5', name: '5G GOLD', quantity: 0, remaining: 0, colorPrimary: '#F7971E', colorSecondary: '#FFD200', isActive: true },
+  { id: '4', name: 'RM388', quantity: 0, remaining: 0, colorPrimary: '#FF4500', colorSecondary: '#FF8C00', isActive: true },
+  { id: '5', name: 'RM588', quantity: 1, remaining: 1, colorPrimary: '#00C6FF', colorSecondary: '#0072FF', isActive: true },
+  { id: '6', name: '5G GOLD', quantity: 0, remaining: 0, colorPrimary: '#F7971E', colorSecondary: '#FFD200', isActive: true },
 ]
 
 const DEFAULT_SETTINGS: EventSettings = {
