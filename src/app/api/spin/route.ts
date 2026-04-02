@@ -67,8 +67,26 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // SERVER-SIDE SPIN LOGIC
-    const { prizeId, prizeName } = db.determinePrize()
+    // Check if pool is exhausted
+    const poolRemaining = db.getTotalRemaining()
+    if (poolRemaining <= 0) {
+      return NextResponse.json(
+        { error: 'Maaf, semua hadiah telah habis diagihkan. Terima kasih atas penyertaan anda!' },
+        { status: 403 }
+      )
+    }
+
+    // SERVER-SIDE SPIN LOGIC - Fixed Pool Selection
+    const result = db.determinePrize()
+    
+    if (!result) {
+      return NextResponse.json(
+        { error: 'Maaf, semua hadiah telah habis diagihkan. Terima kasih atas penyertaan anda!' },
+        { status: 403 }
+      )
+    }
+
+    const { prizeId, prizeName } = result
 
     // Log the spin with all anti-abuse data
     const userAgent = request.headers.get('user-agent') || 'unknown'
@@ -85,15 +103,19 @@ export async function POST(request: NextRequest) {
     // Generate claim ID
     const claimId = `CW${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 5).toUpperCase()}`
 
+    // Get updated pool status
+    const updatedPool = db.getTotalRemaining()
+
     return NextResponse.json({
       ok: true,
       prize: prizeName,
       prizeId,
       claimId,
       spunAt: record.spunAt.toISOString(),
+      poolRemaining: updatedPool,
       message: prizeName === '5G GOLD' 
         ? 'Tidak ada hadiah kali ini. Cuba lagi lain kali!' 
-        : `Tahniah! Anda menang ${prizeName}!`,
+        : `Tahniah! Anda menang ${prizeName}! Sila tuntut hadiah anda.`,
     })
   } catch (error) {
     console.error('Spin error:', error)

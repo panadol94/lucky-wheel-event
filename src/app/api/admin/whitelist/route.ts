@@ -10,6 +10,15 @@ const WhitelistSchema = z.object({
   isActive: z.boolean().optional(),
 })
 
+// Bulk import schema
+const BulkWhitelistSchema = z.object({
+  entries: z.array(z.object({
+    name: z.string().max(200).optional(),
+    whatsappNumber: z.string().min(5).max(20),
+    agentId: z.string().min(1).max(100),
+  })).min(1).max(500),
+})
+
 export async function GET() {
   const session = await getSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -24,6 +33,29 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
+    
+    // Check if this is a bulk import request
+    if (body.entries && Array.isArray(body.entries)) {
+      const parsed = BulkWhitelistSchema.safeParse(body)
+      if (!parsed.success) {
+        return NextResponse.json({ error: 'Data tidak valid', details: parsed.error.flatten() }, { status: 400 })
+      }
+      
+      const added = db.addBulkWhitelist(parsed.data.entries.map(e => ({
+        name: e.name || '',
+        whatsappNumber: e.whatsappNumber,
+        agentId: e.agentId,
+      })))
+      
+      return NextResponse.json({ 
+        ok: true, 
+        added: added.length,
+        entries: added,
+        message: `${added.length} peserta telah ditambah ke whitelist`
+      })
+    }
+    
+    // Single entry add
     const parsed = WhitelistSchema.safeParse(body)
     if (!parsed.success) {
       return NextResponse.json({ error: 'Data tidak valid', details: parsed.error.flatten() }, { status: 400 })

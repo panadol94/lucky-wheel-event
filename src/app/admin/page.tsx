@@ -3,11 +3,27 @@
 import { useState, useEffect, useCallback } from 'react'
 
 // ===== TYPES =====
-type Prize = { id: string; name: string; probability: number; colorPrimary: string; colorSecondary: string; isActive?: boolean }
+type Prize = { 
+  id: string; 
+  name: string; 
+  quantity: number; 
+  remaining: number; 
+  distributed: number;
+  colorPrimary: string; 
+  colorSecondary: string; 
+  isActive?: boolean 
+}
 type WhitelistEntry = { id: string; name: string; whatsappNumber: string; agentId: string; isActive: boolean }
 type SpinRecord = { id: string; whatsappNumber: string; agentId: string; prizeName: string; prizeId: string; spunAt: string; claimStatus: string; ipAddress: string }
 type EventSettings = { eventTitle: string; claimInstructions: string; claimWhatsapp: string; isActive: boolean }
-type Stats = { totalEligible: number; totalSpun: number; byPrize: Record<string, number>; pendingClaims: number }
+type Stats = { 
+  totalEligible: number; 
+  totalSpun: number; 
+  byPrize: Record<string, number>; 
+  pendingClaims: number;
+  poolRemaining: number;
+  poolTotal: number;
+}
 
 type Tab = 'dashboard' | 'prizes' | 'whitelist' | 'spins' | 'settings'
 
@@ -68,12 +84,65 @@ function AdminLogin({ onLogin }: { onLogin: () => void }) {
 }
 
 // ===== STATS CARDS =====
-function StatCard({ icon, label, value, color }: { icon: string; label: string; value: number | string; color: string }) {
+function StatCard({ icon, label, value, color, sub }: { icon: string; label: string; value: number | string; color: string; sub?: string }) {
   return (
     <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,215,0,0.1)', borderRadius: '16px', padding: '20px', textAlign: 'center' }}>
       <div style={{ fontSize: '28px', marginBottom: '8px' }}>{icon}</div>
       <div style={{ fontSize: '32px', fontWeight: 900, color }}>{value}</div>
+      {sub && <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', marginTop: '2px' }}>{sub}</div>}
       <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '4px' }}>{label}</div>
+    </div>
+  )
+}
+
+// ===== BULK IMPORT MODAL =====
+function BulkImportModal({ onClose, onImport }: { onClose: () => void; onImport: (entries: { name: string; whatsappNumber: string; agentId: string }[]) => void }) {
+  const [text, setText] = useState('')
+  const [preview, setPreview] = useState<{ name: string; whatsappNumber: string; agentId: string }[]>([])
+
+  const parseText = (t: string) => {
+    const lines = t.trim().split('\n').filter(l => l.trim())
+    return lines.map(line => {
+      const parts = line.split(',').map(p => p.trim())
+      return { name: parts[0] || '', whatsappNumber: parts[1] || '', agentId: parts[2] || '' }
+    }).filter(e => e.whatsappNumber && e.agentId)
+  }
+
+  const handleTextChange = (t: string) => {
+    setText(t)
+    setPreview(parseText(t))
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+      <div style={{ background: '#1a0025', border: '1px solid rgba(255,215,0,0.3)', borderRadius: '20px', padding: '28px', maxWidth: '600px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
+        <h3 style={{ color: '#ffd700', fontSize: '18px', fontWeight: 800, margin: '0 0 8px' }}>📋 Bulk Import Participants</h3>
+        <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '13px', margin: '0 0 16px' }}>
+          Format: <code style={{ color: '#ffd700' }}>Nama, WhatsApp, AgentID</code> (sat baris setiap peserta)
+        </p>
+        <textarea 
+          value={text} 
+          onChange={e => handleTextChange(e.target.value)}
+          placeholder={"Garry, 60178182320, Garry01\nAhmad, 60121234567, Ahmad123\nCyberJR, 60113338859, CyberSlotAdmin"}
+          rows={10}
+          style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.5)', color: '#fff', fontSize: '13px', fontFamily: 'monospace', resize: 'vertical', boxSizing: 'border-box' }}
+        />
+        {preview.length > 0 && (
+          <div style={{ marginTop: '12px', padding: '12px', background: 'rgba(0,0,0,0.3)', borderRadius: '10px', fontSize: '12px', color: 'rgba(255,255,255,0.6)' }}>
+            <strong style={{ color: '#4ade80' }}>{preview.length} peserta akan ditambah:</strong>
+            <ul style={{ margin: '8px 0 0', paddingLeft: '20px' }}>
+              {preview.slice(0, 5).map((p, i) => <li key={i}>{p.name || '(tiada nama)'} — {p.whatsappNumber} — {p.agentId}</li>)}
+              {preview.length > 5 && <li style={{ color: 'rgba(255,255,255,0.3)' }}>...dan {preview.length - 5} lagi</li>}
+            </ul>
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: '10px', marginTop: '16px', justifyContent: 'flex-end' }}>
+          <button onClick={onClose} style={{ padding: '10px 20px', borderRadius: '999px', border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: 'rgba(255,255,255,0.5)', fontSize: '13px', cursor: 'pointer' }}>Batal</button>
+          <button onClick={() => { if (preview.length > 0) { onImport(preview); onClose() } }} disabled={preview.length === 0} style={{ padding: '10px 24px', borderRadius: '999px', border: 'none', background: 'linear-gradient(135deg, #ffd700, #ff9800)', color: '#1a0000', fontSize: '14px', fontWeight: 800, cursor: preview.length === 0 ? 'not-allowed' : 'pointer', opacity: preview.length === 0 ? 0.5 : 1 }}>
+            Import {preview.length} Peserta
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -90,18 +159,16 @@ export default function AdminPanel() {
   const [settings, setSettings] = useState<EventSettings | null>(null)
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [showBulkImport, setShowBulkImport] = useState(false)
 
   // Form states
   const [newWL, setNewWL] = useState({ name: '', whatsappNumber: '', agentId: '' })
-  const [editPrize, setEditPrize] = useState<Record<string, Partial<Prize>>>({})
 
   // Check auth on mount
   useEffect(() => {
     fetch('/api/admin/auth')
       .then(r => r.json())
-      .then(data => {
-        if (data.authenticated) setIsAuthenticated(true)
-      })
+      .then(data => { if (data.authenticated) setIsAuthenticated(true) })
       .finally(() => setIsCheckingAuth(false))
   }, [])
 
@@ -131,7 +198,7 @@ export default function AdminPanel() {
 
   const showMsg = (type: 'success' | 'error', text: string) => {
     setMsg({ type, text })
-    setTimeout(() => setMsg(null), 3000)
+    setTimeout(() => setMsg(null), 3500)
   }
 
   const handleLogout = async () => {
@@ -139,17 +206,26 @@ export default function AdminPanel() {
     setIsAuthenticated(false)
   }
 
-  // Prize actions
-  const updatePrize = async (id: string, field: string, value: any) => {
-    const prize = prizes.find(p => p.id === id)
-    if (!prize) return
+  // Prize actions - update quantity
+  const updatePrizeQuantity = async (id: string, quantity: number) => {
     const res = await fetch('/api/admin/prizes', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, [field]: value }),
+      body: JSON.stringify({ id, quantity }),
     })
-    if (res.ok) { loadData(); showMsg('success', 'Prize updated!') }
-    else showMsg('error', 'Gagal update prize')
+    if (res.ok) { loadData(); showMsg('success', 'Kuantiti prize updated!') }
+    else showMsg('error', 'Gagal update kuantiti')
+  }
+
+  const resetPool = async () => {
+    if (!confirm('Reset pool? Semua prize akan return ke kuantiti asal. Rekod spin kekal.')) return
+    const res = await fetch('/api/admin/prizes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'reset' }),
+    })
+    if (res.ok) { loadData(); showMsg('success', 'Pool direset!') }
+    else showMsg('error', 'Gagal reset pool')
   }
 
   // Whitelist actions
@@ -164,11 +240,23 @@ export default function AdminPanel() {
     else showMsg('error', 'Gagal tambah entry')
   }
 
-  const toggleWhitelist = async (id: string, isActive: boolean) => {
+  const handleBulkImport = async (entries: { name: string; whatsappNumber: string; agentId: string }[]) => {
+    const res = await fetch('/api/admin/whitelist', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ entries }),
+    })
+    if (res.ok) { loadData(); const data = await res.json(); showMsg('success', `${data.added} peserta ditambah!`) }
+    else showMsg('error', 'Gagal import')
+  }
+
+  const toggleWhitelist = async (id: string) => {
+    const entry = whitelist.find(w => w.id === id)
+    if (!entry) return
     const res = await fetch('/api/admin/whitelist', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, isActive: !isActive }),
+      body: JSON.stringify({ id, isActive: !entry.isActive }),
     })
     if (res.ok) loadData()
     else showMsg('error', 'Gagal update')
@@ -220,16 +308,17 @@ export default function AdminPanel() {
   if (isCheckingAuth) return null
   if (!isAuthenticated) return <AdminLogin onLogin={() => { setIsAuthenticated(true); loadData() }} />
 
-  const totalProb = prizes.reduce((s, p) => s + p.probability, 0)
+  const poolDistributed = stats ? stats.poolTotal - stats.poolRemaining : 0
 
   return (
     <div style={{ minHeight: '100vh', background: 'linear-gradient(180deg, #0a0010 0%, #120208 100%)', color: '#fff', padding: '20px' }}>
+      {showBulkImport && <BulkImportModal onClose={() => setShowBulkImport(false)} onImport={handleBulkImport} />}
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px' }}>
           <div>
             <h1 style={{ color: '#ffd700', fontSize: '26px', fontWeight: 900, margin: '0 0 4px' }}>🎡 Wheel Admin Panel</h1>
-            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '13px', margin: 0 }}>Kelola event, whitelist, dan prize anda</p>
+            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '13px', margin: 0 }}>Fixed Pool System — 84 participants</p>
           </div>
           <button onClick={handleLogout} style={{ padding: '10px 20px', borderRadius: '999px', border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: 'rgba(255,255,255,0.5)', fontSize: '13px', cursor: 'pointer' }}>Logout</button>
         </div>
@@ -253,20 +342,42 @@ export default function AdminPanel() {
         {/* DASHBOARD TAB */}
         {tab === 'dashboard' && stats && (
           <div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', marginBottom: '24px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px', marginBottom: '24px' }}>
               <StatCard icon="👥" label="Peserta Layak" value={stats.totalEligible} color="#4facfe" />
               <StatCard icon="🎰" label="Sudah Spin" value={stats.totalSpun} color="#ffd700" />
+              <StatCard icon="📦" label="Pool Baki" value={stats.poolRemaining} color="#25D366" sub={`dari ${stats.poolTotal} hadiah`} />
               <StatCard icon="⏳" label="Pending Claim" value={stats.pendingClaims} color="#ff6b6b" />
-              <StatCard icon="🏆" label="Total Hadiah" value={prizes.length} color="#25D366" />
             </div>
 
+            {/* Pool status bar */}
+            <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,215,0,0.1)', borderRadius: '18px', padding: '20px', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <h3 style={{ color: '#ffd700', fontSize: '14px', fontWeight: 800, margin: 0 }}>🏈 Prize Pool Status</h3>
+                <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>{poolDistributed} / {stats.poolTotal} diagihkan</span>
+              </div>
+              <div style={{ height: '12px', background: 'rgba(0,0,0,0.5)', borderRadius: '999px', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${stats.poolTotal > 0 ? (poolDistributed / stats.poolTotal) * 100 : 0}%`, background: 'linear-gradient(90deg, #ffd700, #ff9800)', borderRadius: '999px', transition: 'width 0.5s' }} />
+              </div>
+              <div style={{ display: 'flex', gap: '16px', marginTop: '12px', flexWrap: 'wrap' }}>
+                {prizes.map(p => (
+                  <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
+                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: `linear-gradient(135deg, ${p.colorPrimary}, ${p.colorSecondary})` }} />
+                    <span>{p.name}:</span>
+                    <strong style={{ color: '#ffd700' }}>{p.remaining}/{p.quantity}</strong>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Prize distribution */}
             <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,215,0,0.1)', borderRadius: '18px', padding: '24px' }}>
               <h3 style={{ color: '#ffd700', fontSize: '16px', fontWeight: 800, margin: '0 0 16px' }}>📊 Keputusan Ikut Hadiah</h3>
               <div style={{ display: 'grid', gap: '10px' }}>
-                {prizes.map(p => (
+                {prizes.filter(p => p.quantity > 0).map(p => (
                   <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'rgba(0,0,0,0.3)', borderRadius: '12px' }}>
                     <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: `linear-gradient(135deg, ${p.colorPrimary}, ${p.colorSecondary})` }} />
                     <span style={{ flex: 1, fontWeight: 700 }}>{p.name}</span>
+                    <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '12px' }}>{stats.byPrize[p.name] || 0}x / {p.quantity}</span>
                     <span style={{ color: '#ffd700', fontWeight: 800 }}>{stats.byPrize[p.name] || 0}x</span>
                   </div>
                 ))}
@@ -277,25 +388,45 @@ export default function AdminPanel() {
 
         {/* PRIZES TAB */}
         {tab === 'prizes' && (
-          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,215,0,0.1)', borderRadius: '18px', padding: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ color: '#ffd700', fontSize: '16px', fontWeight: 800, margin: 0 }}>🎁 Modul Hadiah</h3>
-              <div style={{ padding: '6px 14px', borderRadius: '999px', background: totalProb === 100 ? 'rgba(37,211,102,0.15)' : 'rgba(255,68,68,0.15)', color: totalProb === 100 ? '#4ade80' : '#ff6b6b', fontSize: '12px', fontWeight: 700 }}>
-                Total: {totalProb}% {totalProb !== 100 && '(mesti 100%)'}
+          <div>
+            <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,215,0,0.1)', borderRadius: '18px', padding: '24px', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h3 style={{ color: '#ffd700', fontSize: '16px', fontWeight: 800, margin: 0 }}>🎁 Fixed Prize Pool</h3>
+                <button onClick={resetPool} style={{ padding: '8px 16px', borderRadius: '999px', border: '1px solid rgba(255,215,0,0.3)', background: 'transparent', color: '#ffd700', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>🔄 Reset Pool</button>
               </div>
+              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '13px', margin: '0 0 16px' }}>Sistem fixed pool — setiap prize ada kuantiti tetap. Prize diagihkan first-come-first-served sehingga habis.</p>
+              <div style={{ display: 'grid', gap: '12px' }}>
+                {prizes.filter(p => p.quantity > 0 || p.remaining > 0).map(p => (
+                  <div key={p.id} style={{ display: 'grid', gridTemplateColumns: 'auto 1fr 80px 80px 60px 40px', gap: '10px', alignItems: 'center', padding: '14px', background: 'rgba(0,0,0,0.3)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: `linear-gradient(135deg, ${p.colorPrimary}, ${p.colorSecondary})`, border: '1px solid rgba(255,255,255,0.1)' }} />
+                    <span style={{ fontWeight: 800, fontSize: '15px' }}>{p.name}</span>
+                    <div style={{ textAlign: 'center' }}>
+                      <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', display: 'block' }}>Kuantiti</span>
+                      <input 
+                        type="number" 
+                        value={p.quantity} 
+                        min={0} 
+                        max={1000}
+                        onChange={e => updatePrizeQuantity(p.id, Number(e.target.value))}
+                        style={{ width: '60px', padding: '6px 8px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.4)', color: '#fff', fontSize: '14px', outline: 'none', textAlign: 'center' }} 
+                      />
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                      <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', display: 'block' }}>Baki</span>
+                      <span style={{ fontSize: '18px', fontWeight: 800, color: p.remaining > 0 ? '#4ade80' : '#ff6b6b' }}>{p.remaining}</span>
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                      <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', display: 'block' }}>Habis</span>
+                      <span style={{ fontSize: '14px', fontWeight: 700, color: '#ffd700' }}>{p.distributed}</span>
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: p.remaining > 0 ? '#4ade80' : '#ff6b6b', margin: '0 auto' }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p style={{ marginTop: '14px', fontSize: '12px', color: 'rgba(255,255,255,0.3)' }}>Tukar kuantiti akan reset prize pool semasa.</p>
             </div>
-            <div style={{ display: 'grid', gap: '12px' }}>
-              {prizes.map(p => (
-                <div key={p.id} style={{ display: 'grid', gridTemplateColumns: '1fr 80px 80px 80px 40px', gap: '8px', alignItems: 'center', padding: '14px', background: 'rgba(0,0,0,0.3)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                  <input value={p.name} onChange={e => updatePrize(p.id, 'name', e.target.value)} style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.4)', color: '#fff', fontSize: '14px', outline: 'none' }} />
-                  <input type="number" value={p.probability} min={0} max={100} onChange={e => updatePrize(p.id, 'probability', Number(e.target.value))} style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.4)', color: '#fff', fontSize: '14px', outline: 'none', textAlign: 'center' }} />
-                  <input value={p.colorPrimary} onChange={e => updatePrize(p.id, 'colorPrimary', e.target.value)} type="color" style={{ padding: '4px', height: '38px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', cursor: 'pointer' }} />
-                  <input value={p.colorSecondary} onChange={e => updatePrize(p.id, 'colorSecondary', e.target.value)} type="color" style={{ padding: '4px', height: '38px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', cursor: 'pointer' }} />
-                  <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: `linear-gradient(135deg, ${p.colorPrimary}, ${p.colorSecondary})`, border: '1px solid rgba(255,255,255,0.1)' }} />
-                </div>
-              ))}
-            </div>
-            <p style={{ marginTop: '14px', fontSize: '12px', color: 'rgba(255,255,255,0.3)' }}>Probability = % chance utk menang. Total wajib = 100% supaya spin adil.</p>
           </div>
         )}
 
@@ -304,7 +435,10 @@ export default function AdminPanel() {
           <div>
             {/* Add form */}
             <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,215,0,0.1)', borderRadius: '18px', padding: '20px', marginBottom: '16px' }}>
-              <h3 style={{ color: '#ffd700', fontSize: '15px', fontWeight: 800, margin: '0 0 14px' }}>➕ Tambah Participant</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                <h3 style={{ color: '#ffd700', fontSize: '15px', fontWeight: 800, margin: 0 }}>➕ Tambah Participant</h3>
+                <button onClick={() => setShowBulkImport(true)} style={{ padding: '8px 16px', borderRadius: '999px', border: '1px solid rgba(37,211,102,0.4)', background: 'rgba(37,211,102,0.1)', color: '#4ade80', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>📋 Bulk Import</button>
+              </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '8px' }}>
                 <input placeholder="Nama (optional)" value={newWL.name} onChange={e => setNewWL({ ...newWL, name: e.target.value })} style={{ padding: '10px 13px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.4)', color: '#fff', fontSize: '14px', outline: 'none' }} />
                 <input placeholder="WhatsApp" value={newWL.whatsappNumber} onChange={e => setNewWL({ ...newWL, whatsappNumber: e.target.value })} style={{ padding: '10px 13px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.4)', color: '#fff', fontSize: '14px', outline: 'none' }} />
@@ -334,7 +468,7 @@ export default function AdminPanel() {
                         <td style={{ padding: '10px 8px', fontSize: '14px' }}>{w.whatsappNumber}</td>
                         <td style={{ padding: '10px 8px', fontSize: '14px', fontWeight: 700 }}>{w.agentId}</td>
                         <td style={{ padding: '10px 8px', textAlign: 'center' }}>
-                          <button onClick={() => toggleWhitelist(w.id, w.isActive)} style={{ padding: '5px 12px', borderRadius: '999px', border: 'none', background: w.isActive ? 'rgba(37,211,102,0.2)' : 'rgba(255,68,68,0.2)', color: w.isActive ? '#4ade80' : '#ff6b6b', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}>
+                          <button onClick={() => toggleWhitelist(w.id)} style={{ padding: '5px 12px', borderRadius: '999px', border: 'none', background: w.isActive ? 'rgba(37,211,102,0.2)' : 'rgba(255,68,68,0.2)', color: w.isActive ? '#4ade80' : '#ff6b6b', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}>
                             {w.isActive ? 'Aktif' : 'Nonaktif'}
                           </button>
                         </td>
@@ -419,7 +553,7 @@ export default function AdminPanel() {
                 <input value={settings.claimWhatsapp} onChange={e => setSettings({ ...settings!, claimWhatsapp: e.target.value })} style={{ width: '100%', padding: '12px 15px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.4)', color: '#fff', fontSize: '15px', outline: 'none', boxSizing: 'border-box' }} />
               </div>
               <div>
-                <label style={{ display: 'block', marginBottom: '6px', fontSize: '12px', color: 'rgba(255,255,255,0.6)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}> Instruksi Claim</label>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '12px', color: 'rgba(255,255,255,0.6)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Instruksi Claim</label>
                 <textarea value={settings.claimInstructions} onChange={e => setSettings({ ...settings!, claimInstructions: e.target.value })} rows={3} style={{ width: '100%', padding: '12px 15px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.4)', color: '#fff', fontSize: '15px', outline: 'none', boxSizing: 'border-box', resize: 'vertical' }} />
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -432,8 +566,8 @@ export default function AdminPanel() {
                 <button onClick={saveSettings} style={{ padding: '12px 28px', borderRadius: '999px', border: 'none', background: 'linear-gradient(135deg, #ffd700, #ff9800)', color: '#1a0000', fontSize: '15px', fontWeight: 800, cursor: 'pointer' }}>
                   💾 Save Settings
                 </button>
-                <button onClick={() => { if (confirm('Rekod spin akan kekal. Reset whitelist dan prize sahaja.')) { /* reset logic */ } }} style={{ padding: '12px 28px', borderRadius: '999px', border: '1px solid rgba(255,68,68,0.4)', background: 'transparent', color: '#ff6b6b', fontSize: '15px', fontWeight: 700, cursor: 'pointer' }}>
-                  🔄 Reset Event
+                <button onClick={resetPool} style={{ padding: '12px 28px', borderRadius: '999px', border: '1px solid rgba(255,68,68,0.4)', background: 'transparent', color: '#ff6b6b', fontSize: '15px', fontWeight: 700, cursor: 'pointer' }}>
+                  🔄 Reset Pool
                 </button>
               </div>
             </div>

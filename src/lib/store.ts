@@ -1,13 +1,14 @@
 /**
  * In-Memory Database Store
  * Production would use PostgreSQL/MySQL via Prisma
- * This provides the same anti-abuse logic as a real database
+ * Fixed Pool Lucky Wheel System (not probability-based)
  */
 
 export interface Prize {
   id: string
   name: string
-  probability: number
+  quantity: number       // total available in pool
+  remaining: number       // still available to be won
   colorPrimary: string
   colorSecondary: string
   isActive: boolean
@@ -49,19 +50,20 @@ export interface Admin {
   name: string
 }
 
-// Seed data
+// Seed data - Fixed Pool prizes for 84 participants
+// 80 RM100, 2 RM188, 1 RM288, 1 RM588 = 84 total
 const DEFAULT_PRIZES: Prize[] = [
-  { id: '1', name: 'RM100', probability: 93, colorPrimary: '#FFD700', colorSecondary: '#FFA500', isActive: true },
-  { id: '2', name: 'RM288', probability: 5, colorPrimary: '#FF6B6B', colorSecondary: '#FF8E53', isActive: true },
-  { id: '3', name: 'RM388', probability: 1, colorPrimary: '#8E2DE2', colorSecondary: '#FF6FD8', isActive: true },
-  { id: '4', name: 'RM588', probability: 1, colorPrimary: '#00C6FF', colorSecondary: '#0072FF', isActive: true },
-  { id: '5', name: '5G GOLD', probability: 0, colorPrimary: '#F7971E', colorSecondary: '#FFD200', isActive: true },
+  { id: '1', name: 'RM100', quantity: 80, remaining: 80, colorPrimary: '#FFD700', colorSecondary: '#FFA500', isActive: true },
+  { id: '2', name: 'RM188', quantity: 2, remaining: 2, colorPrimary: '#FF6B6B', colorSecondary: '#FF8E53', isActive: true },
+  { id: '3', name: 'RM288', quantity: 1, remaining: 1, colorPrimary: '#8E2DE2', colorSecondary: '#FF6FD8', isActive: true },
+  { id: '4', name: 'RM588', quantity: 1, remaining: 1, colorPrimary: '#00C6FF', colorSecondary: '#0072FF', isActive: true },
+  { id: '5', name: '5G GOLD', quantity: 0, remaining: 0, colorPrimary: '#F7971E', colorSecondary: '#FFD200', isActive: true },
 ]
 
 const DEFAULT_SETTINGS: EventSettings = {
   eventTitle: '🎡 CM8 Lucky Wheel Event',
   claimInstructions: 'Sila screenshot gambar kemenangan anda dan hantar ke WhatsApp 01133388859.',
-  claimWhatsapp: '601133388859',
+  claimWhatsapp: '60113338859',
   isActive: true,
 }
 
@@ -104,8 +106,39 @@ class Database {
     const prize = this.prizes.get(id)
     if (!prize) return null
     const updated = { ...prize, ...data }
+    // Ensure remaining doesn't exceed quantity
+    if (updated.remaining > updated.quantity) {
+      updated.remaining = updated.quantity
+    }
     this.prizes.set(id, updated)
     return updated
+  }
+
+  // Decrement remaining count for a prize
+  decrementPrizeRemaining(prizeId: string): boolean {
+    const prize = this.prizes.get(prizeId)
+    if (!prize || prize.remaining <= 0) return false
+    prize.remaining--
+    this.prizes.set(prizeId, prize)
+    return true
+  }
+
+  // Get total prizes remaining in pool
+  getTotalRemaining(): number {
+    return Array.from(this.prizes.values())
+      .filter(p => p.isActive)
+      .reduce((sum, p) => sum + p.remaining, 0)
+  }
+
+  // Reset pool to initial quantities
+  resetPool(): void {
+    this.prizes.forEach((prize, id) => {
+      const defaultPrize = DEFAULT_PRIZES.find(p => p.id === id)
+      if (defaultPrize) {
+        prize.remaining = prize.quantity
+        this.prizes.set(id, prize)
+      }
+    })
   }
 
   // ===== WHITELIST =====
@@ -129,6 +162,21 @@ class Database {
     const entry: WhitelistEntry = { id, name, whatsappNumber, agentId, isActive: true }
     this.whitelist.set(id, entry)
     return entry
+  }
+
+  // Bulk add whitelist entries
+  addBulkWhitelist(entries: { name: string; whatsappNumber: string; agentId: string }[]): WhitelistEntry[] {
+    const added: WhitelistEntry[] = []
+    entries.forEach(e => {
+      // Check if already exists
+      const existing = Array.from(this.whitelist.values()).find(
+        w => w.whatsappNumber === e.whatsappNumber && w.agentId === e.agentId
+      )
+      if (!existing) {
+        added.push(this.addWhitelistEntry(e.name, e.whatsappNumber, e.agentId))
+      }
+    })
+    return added
   }
 
   updateWhitelistEntry(id: string, data: Partial<WhitelistEntry>): WhitelistEntry | null {
@@ -201,15 +249,29 @@ class Database {
   }
 
   // ===== STATS =====
-  getStats(): { totalEligible: number; totalSpun: number; byPrize: Record<string, number>; pendingClaims: number } {
+  getStats(): { 
+    totalEligible: number; 
+    totalSpun: number; 
+    byPrize: Record<string, number>; 
+    pendingClaims: number;
+    poolRemaining: number;
+    poolTotal: number;
+  } {
     const spun = this.getSpinRecords()
     const byPrize: Record<string, number> = {}
     spun.forEach(r => { byPrize[r.prizeName] = (byPrize[r.prizeName] || 0) + 1 })
+    
+    const prizes = Array.from(this.prizes.values()).filter(p => p.isActive)
+    const poolTotal = prizes.reduce((sum, p) => sum + p.quantity, 0)
+    const poolRemaining = prizes.reduce((sum, p) => sum + p.remaining, 0)
+    
     return {
       totalEligible: this.getActiveWhitelist().length,
       totalSpun: spun.length,
       byPrize,
       pendingClaims: spun.filter(r => r.claimStatus === 'pending').length,
+      poolRemaining,
+      poolTotal,
     }
   }
 
@@ -228,23 +290,31 @@ class Database {
     return Array.from(this.admins.values()).find(a => a.username === username)
   }
 
-  // ===== SPIN LOGIC (Server-side weighted random) =====
-  determinePrize(): { prizeId: string; prizeName: string } {
-    const prizes = this.getPrizes()
-    const total = prizes.reduce((sum, p) => sum + p.probability, 0)
-    if (total === 0) {
-      // Default to RM100 if no prizes have probability
-      return { prizeId: prizes[0].id, prizeName: prizes[0].name }
+  // ===== SPIN LOGIC (Fixed Pool - FIFO Random) =====
+  determinePrize(): { prizeId: string; prizeName: string } | null {
+    // Get prizes with remaining stock
+    const availablePrizes = this.getPrizes().filter(p => p.remaining > 0)
+    
+    if (availablePrizes.length === 0) {
+      return null // Pool exhausted
     }
-    let random = Math.random() * total
-    for (const prize of prizes) {
-      random -= prize.probability
+    
+    // Random selection from available prizes (equal probability among remaining)
+    const totalRemaining = availablePrizes.reduce((sum, p) => sum + p.remaining, 0)
+    let random = Math.random() * totalRemaining
+    
+    for (const prize of availablePrizes) {
+      random -= prize.remaining
       if (random <= 0) {
+        // Decrement the prize remaining count
+        this.decrementPrizeRemaining(prize.id)
         return { prizeId: prize.id, prizeName: prize.name }
       }
     }
-    // Fallback to last prize
-    const last = prizes[prizes.length - 1]
+    
+    // Fallback (shouldn't reach here)
+    const last = availablePrizes[availablePrizes.length - 1]
+    this.decrementPrizeRemaining(last.id)
     return { prizeId: last.id, prizeName: last.name }
   }
 }
