@@ -4,7 +4,6 @@ import { rateLimit } from '@/lib/ratelimit'
 import { z } from 'zod'
 
 const SpinSchema = z.object({
-  whatsappNumber: z.string().min(5).max(20),
   agentId: z.string().min(1).max(100),
   deviceFingerprint: z.string().min(1).max(255),
 })
@@ -35,10 +34,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { whatsappNumber, agentId, deviceFingerprint } = parsed.data
-
-    // Normalize - remove non-digits for comparison
-    const normalizedWA = whatsappNumber.replace(/\D/g, '')
+    const { agentId, deviceFingerprint } = parsed.data
     const normalizedAgent = agentId.trim()
 
     // Check event is active
@@ -50,8 +46,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check whitelist
-    const whitelistEntry = db.isInWhitelist(whatsappNumber, agentId)
+    // Check whitelist - agentId only
+    const whitelistEntry = db.isInWhitelist(normalizedAgent)
     if (!whitelistEntry) {
       return NextResponse.json(
         { error: 'Maaf, anda tidak layak untuk menyertai lucky wheel ini.' },
@@ -59,8 +55,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if already spun (anti-abuse)
-    if (db.hasSpun(whatsappNumber, agentId)) {
+    // Check if already spun (anti-abuse) - agentId only
+    if (db.hasSpun(normalizedAgent)) {
       return NextResponse.json(
         { error: 'Anda telah menggunakan peluang putaran anda.' },
         { status: 403 }
@@ -91,8 +87,7 @@ export async function POST(request: NextRequest) {
     // Log the spin with all anti-abuse data
     const userAgent = request.headers.get('user-agent') || 'unknown'
     const record = db.addSpinRecord(
-      whatsappNumber,
-      agentId,
+      normalizedAgent,
       prizeId,
       prizeName,
       deviceFingerprint,
@@ -127,7 +122,5 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET() {
-  // Check if user has already spun (for resuming session)
-  // This would require session data passed via headers/cookies
   return NextResponse.json({ error: 'Method not allowed' }, { status: 405 })
 }

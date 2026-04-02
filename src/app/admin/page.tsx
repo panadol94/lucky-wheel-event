@@ -13,8 +13,8 @@ type Prize = {
   colorSecondary: string; 
   isActive?: boolean 
 }
-type WhitelistEntry = { id: string; name: string; whatsappNumber: string; agentId: string; isActive: boolean }
-type SpinRecord = { id: string; whatsappNumber: string; agentId: string; prizeName: string; prizeId: string; spunAt: string; claimStatus: string; ipAddress: string }
+type WhitelistEntry = { id: string; name: string; agentId: string; isActive: boolean }
+type SpinRecord = { id: string; agentId: string; prizeName: string; prizeId: string; spunAt: string; claimStatus: string; ipAddress: string }
 type EventSettings = { eventTitle: string; claimInstructions: string; claimWhatsapp: string; isActive: boolean }
 type Stats = { 
   totalEligible: number; 
@@ -96,16 +96,16 @@ function StatCard({ icon, label, value, color, sub }: { icon: string; label: str
 }
 
 // ===== BULK IMPORT MODAL =====
-function BulkImportModal({ onClose, onImport }: { onClose: () => void; onImport: (entries: { name: string; whatsappNumber: string; agentId: string }[]) => void }) {
+function BulkImportModal({ onClose, onImport }: { onClose: () => void; onImport: (entries: { name: string; agentId: string }[]) => void }) {
   const [text, setText] = useState('')
-  const [preview, setPreview] = useState<{ name: string; whatsappNumber: string; agentId: string }[]>([])
+  const [preview, setPreview] = useState<{ name: string; agentId: string }[]>([])
 
   const parseText = (t: string) => {
     const lines = t.trim().split('\n').filter(l => l.trim())
     return lines.map(line => {
       const parts = line.split(',').map(p => p.trim())
-      return { name: parts[0] || '', whatsappNumber: parts[1] || '', agentId: parts[2] || '' }
-    }).filter(e => e.whatsappNumber && e.agentId)
+      return { name: parts[0] || '', agentId: parts[1] || '' }
+    }).filter(e => e.agentId)
   }
 
   const handleTextChange = (t: string) => {
@@ -118,12 +118,12 @@ function BulkImportModal({ onClose, onImport }: { onClose: () => void; onImport:
       <div style={{ background: '#1a0025', border: '1px solid rgba(255,215,0,0.3)', borderRadius: '20px', padding: '28px', maxWidth: '600px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
         <h3 style={{ color: '#ffd700', fontSize: '18px', fontWeight: 800, margin: '0 0 8px' }}>📋 Bulk Import Participants</h3>
         <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '13px', margin: '0 0 16px' }}>
-          Format: <code style={{ color: '#ffd700' }}>Nama, WhatsApp, AgentID</code> (sat baris setiap peserta)
+          Format: <code style={{ color: '#ffd700' }}>Nama, AgentID</code> (sat baris setiap peserta)
         </p>
         <textarea 
           value={text} 
           onChange={e => handleTextChange(e.target.value)}
-          placeholder={"Garry, 60178182320, Garry01\nAhmad, 60121234567, Ahmad123\nCyberJR, 60113338859, CyberSlotAdmin"}
+          placeholder={"Garry, Garry01\nAhmad, Ahmad123\nCyberJR, CyberSlotAdmin"}
           rows={10}
           style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.5)', color: '#fff', fontSize: '13px', fontFamily: 'monospace', resize: 'vertical', boxSizing: 'border-box' }}
         />
@@ -131,7 +131,7 @@ function BulkImportModal({ onClose, onImport }: { onClose: () => void; onImport:
           <div style={{ marginTop: '12px', padding: '12px', background: 'rgba(0,0,0,0.3)', borderRadius: '10px', fontSize: '12px', color: 'rgba(255,255,255,0.6)' }}>
             <strong style={{ color: '#4ade80' }}>{preview.length} peserta akan ditambah:</strong>
             <ul style={{ margin: '8px 0 0', paddingLeft: '20px' }}>
-              {preview.slice(0, 5).map((p, i) => <li key={i}>{p.name || '(tiada nama)'} — {p.whatsappNumber} — {p.agentId}</li>)}
+              {preview.slice(0, 5).map((p, i) => <li key={i}>{p.name || '(tiada nama)'} — {p.agentId}</li>)}
               {preview.length > 5 && <li style={{ color: 'rgba(255,255,255,0.3)' }}>...dan {preview.length - 5} lagi</li>}
             </ul>
           </div>
@@ -162,7 +162,7 @@ export default function AdminPanel() {
   const [showBulkImport, setShowBulkImport] = useState(false)
 
   // Form states
-  const [newWL, setNewWL] = useState({ name: '', whatsappNumber: '', agentId: '' })
+  const [newWL, setNewWL] = useState({ name: '', agentId: '' })
 
   // Check auth on mount
   useEffect(() => {
@@ -230,17 +230,17 @@ export default function AdminPanel() {
 
   // Whitelist actions
   const addWhitelist = async () => {
-    if (!newWL.whatsappNumber || !newWL.agentId) return showMsg('error', 'WhatsApp & Agent ID wajib')
+    if (!newWL.agentId) return showMsg('error', 'Agent ID wajib')
     const res = await fetch('/api/admin/whitelist', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newWL),
     })
-    if (res.ok) { setNewWL({ name: '', whatsappNumber: '', agentId: '' }); loadData(); showMsg('success', 'Entry ditambah!') }
+    if (res.ok) { setNewWL({ name: '', agentId: '' }); loadData(); showMsg('success', 'Entry ditambah!') }
     else showMsg('error', 'Gagal tambah entry')
   }
 
-  const handleBulkImport = async (entries: { name: string; whatsappNumber: string; agentId: string }[]) => {
+  const handleBulkImport = async (entries: { name: string; agentId: string }[]) => {
     const res = await fetch('/api/admin/whitelist', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -293,8 +293,8 @@ export default function AdminPanel() {
   }
 
   const exportCSV = () => {
-    const headers = ['#', 'WhatsApp', 'Agent ID', 'Hadiah', 'Status', 'Tarikh', 'IP']
-    const rows = spins.map((s, i) => [i + 1, s.whatsappNumber, s.agentId, s.prizeName, s.claimStatus, s.spunAt, s.ipAddress])
+    const headers = ['#', 'Agent ID', 'Hadiah', 'Status', 'Tarikh', 'IP']
+    const rows = spins.map((s, i) => [i + 1, s.agentId, s.prizeName, s.claimStatus, s.spunAt, s.ipAddress])
     const csv = [headers, ...rows].map(r => r.join(',')).join('\n')
     const blob = new Blob([csv], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
@@ -439,9 +439,8 @@ export default function AdminPanel() {
                 <h3 style={{ color: '#ffd700', fontSize: '15px', fontWeight: 800, margin: 0 }}>➕ Tambah Participant</h3>
                 <button onClick={() => setShowBulkImport(true)} style={{ padding: '8px 16px', borderRadius: '999px', border: '1px solid rgba(37,211,102,0.4)', background: 'rgba(37,211,102,0.1)', color: '#4ade80', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>📋 Bulk Import</button>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '8px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '8px' }}>
                 <input placeholder="Nama (optional)" value={newWL.name} onChange={e => setNewWL({ ...newWL, name: e.target.value })} style={{ padding: '10px 13px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.4)', color: '#fff', fontSize: '14px', outline: 'none' }} />
-                <input placeholder="WhatsApp" value={newWL.whatsappNumber} onChange={e => setNewWL({ ...newWL, whatsappNumber: e.target.value })} style={{ padding: '10px 13px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.4)', color: '#fff', fontSize: '14px', outline: 'none' }} />
                 <input placeholder="Agent ID" value={newWL.agentId} onChange={e => setNewWL({ ...newWL, agentId: e.target.value })} style={{ padding: '10px 13px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.4)', color: '#fff', fontSize: '14px', outline: 'none' }} />
                 <button onClick={addWhitelist} style={{ padding: '10px 20px', borderRadius: '10px', border: 'none', background: '#25D366', color: '#fff', fontWeight: 800, cursor: 'pointer', fontSize: '16px' }}>+</button>
               </div>
@@ -455,7 +454,6 @@ export default function AdminPanel() {
                   <thead>
                     <tr style={{ borderBottom: '2px solid rgba(255,215,0,0.15)' }}>
                       <th style={{ padding: '10px 8px', textAlign: 'left', color: '#ffd700', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Nama</th>
-                      <th style={{ padding: '10px 8px', textAlign: 'left', color: '#ffd700', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>WhatsApp</th>
                       <th style={{ padding: '10px 8px', textAlign: 'left', color: '#ffd700', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Agent ID</th>
                       <th style={{ padding: '10px 8px', textAlign: 'center', color: '#ffd700', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Status</th>
                       <th style={{ padding: '10px 8px', textAlign: 'center', color: '#ffd700', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Actions</th>
@@ -465,7 +463,6 @@ export default function AdminPanel() {
                     {whitelist.map(w => (
                       <tr key={w.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                         <td style={{ padding: '10px 8px', fontSize: '14px' }}>{w.name || '-'}</td>
-                        <td style={{ padding: '10px 8px', fontSize: '14px' }}>{w.whatsappNumber}</td>
                         <td style={{ padding: '10px 8px', fontSize: '14px', fontWeight: 700 }}>{w.agentId}</td>
                         <td style={{ padding: '10px 8px', textAlign: 'center' }}>
                           <button onClick={() => toggleWhitelist(w.id)} style={{ padding: '5px 12px', borderRadius: '999px', border: 'none', background: w.isActive ? 'rgba(37,211,102,0.2)' : 'rgba(255,68,68,0.2)', color: w.isActive ? '#4ade80' : '#ff6b6b', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}>
@@ -494,24 +491,21 @@ export default function AdminPanel() {
               <button onClick={exportCSV} style={{ padding: '10px 20px', borderRadius: '999px', border: '1px solid rgba(255,215,0,0.3)', background: 'transparent', color: '#ffd700', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>📥 Export CSV</button>
             </div>
             <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,215,0,0.1)', borderRadius: '18px', padding: '20px', overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '700px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
                 <thead>
                   <tr style={{ borderBottom: '2px solid rgba(255,215,0,0.15)' }}>
                     <th style={{ padding: '10px 8px', textAlign: 'left', color: '#ffd700', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>#</th>
-                    <th style={{ padding: '10px 8px', textAlign: 'left', color: '#ffd700', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>WhatsApp</th>
                     <th style={{ padding: '10px 8px', textAlign: 'left', color: '#ffd700', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Agent ID</th>
                     <th style={{ padding: '10px 8px', textAlign: 'left', color: '#ffd700', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Hadiah</th>
                     <th style={{ padding: '10px 8px', textAlign: 'left', color: '#ffd700', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Status</th>
                     <th style={{ padding: '10px 8px', textAlign: 'left', color: '#ffd700', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Masa</th>
                     <th style={{ padding: '10px 8px', textAlign: 'left', color: '#ffd700', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>IP</th>
-                    <th style={{ padding: '10px 8px', textAlign: 'center', color: '#ffd700', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {spins.map((s, i) => (
                     <tr key={s.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                       <td style={{ padding: '10px 8px', fontSize: '13px' }}>{i + 1}</td>
-                      <td style={{ padding: '10px 8px', fontSize: '13px' }}>{s.whatsappNumber}</td>
                       <td style={{ padding: '10px 8px', fontSize: '13px', fontWeight: 700 }}>{s.agentId}</td>
                       <td style={{ padding: '10px 8px' }}>
                         <span style={{ padding: '4px 10px', borderRadius: '999px', background: 'rgba(255,215,0,0.12)', color: '#ffd700', fontSize: '12px', fontWeight: 700 }}>{s.prizeName}</span>
@@ -525,13 +519,10 @@ export default function AdminPanel() {
                       </td>
                       <td style={{ padding: '10px 8px', fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>{new Date(s.spunAt).toLocaleString('ms-MY')}</td>
                       <td style={{ padding: '10px 8px', fontSize: '11px', color: 'rgba(255,255,255,0.3)', fontFamily: 'monospace' }}>{s.ipAddress}</td>
-                      <td style={{ padding: '10px 8px', textAlign: 'center' }}>
-                        <a href={`https://wa.me/${s.whatsappNumber}`} target="_blank" rel="noopener" style={{ color: '#25D366', fontSize: '12px', textDecoration: 'none' }}>📱</a>
-                      </td>
                     </tr>
                   ))}
                   {spins.length === 0 && (
-                    <tr><td colSpan={8} style={{ textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.2)' }}>Tiada rekod spin lagi.</td></tr>
+                    <tr><td colSpan={6} style={{ textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.2)' }}>Tiada rekod spin lagi.</td></tr>
                   )}
                 </tbody>
               </table>

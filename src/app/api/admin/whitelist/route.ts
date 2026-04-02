@@ -5,16 +5,13 @@ import { z } from 'zod'
 
 const WhitelistSchema = z.object({
   name: z.string().max(200).optional(),
-  whatsappNumber: z.string().min(5).max(20),
   agentId: z.string().min(1).max(100),
-  isActive: z.boolean().optional(),
 })
 
 // Bulk import schema
 const BulkWhitelistSchema = z.object({
   entries: z.array(z.object({
     name: z.string().max(200).optional(),
-    whatsappNumber: z.string().min(5).max(20),
     agentId: z.string().min(1).max(100),
   })).min(1).max(500),
 })
@@ -43,7 +40,6 @@ export async function POST(request: NextRequest) {
       
       const added = db.addBulkWhitelist(parsed.data.entries.map(e => ({
         name: e.name || '',
-        whatsappNumber: e.whatsappNumber,
         agentId: e.agentId,
       })))
       
@@ -61,8 +57,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Data tidak valid', details: parsed.error.flatten() }, { status: 400 })
     }
 
-    const { name, whatsappNumber, agentId } = parsed.data
-    const entry = db.addWhitelistEntry(name || '', whatsappNumber, agentId)
+    const { name, agentId } = parsed.data
+    const entry = db.addWhitelistEntry(name || '', agentId)
     return NextResponse.json({ ok: true, entry })
   } catch {
     return NextResponse.json({ error: 'Ralat server' }, { status: 500 })

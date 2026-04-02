@@ -17,14 +17,12 @@ export interface Prize {
 export interface WhitelistEntry {
   id: string
   name: string
-  whatsappNumber: string
   agentId: string
   isActive: boolean
 }
 
 export interface SpinRecord {
   id: string
-  whatsappNumber: string
   agentId: string
   prizeId: string
   prizeName: string
@@ -90,10 +88,10 @@ class Database {
   constructor() {
     // Initialize with seed prizes
     DEFAULT_PRIZES.forEach(p => this.prizes.set(p.id, p))
-    // Add some sample whitelist entries
-    this.addWhitelistEntry('Garry', '60178182320', 'Garry01')
-    this.addWhitelistEntry('Ahmad', '60121234567', 'Ahmad123')
-    this.addWhitelistEntry('CyberJR', '60113338859', 'CyberSlotAdmin')
+    // Add some sample whitelist entries (agentId only, no whatsapp needed)
+    this.addWhitelistEntry('Garry', 'Garry01')
+    this.addWhitelistEntry('Ahmad', 'Ahmad123')
+    this.addWhitelistEntry('CyberJR', 'CyberSlotAdmin')
   }
 
   // ===== PRIZES =====
@@ -153,30 +151,30 @@ class Database {
     return Array.from(this.whitelist.values()).filter(w => w.isActive)
   }
 
-  isInWhitelist(whatsapp: string, agentId: string): WhitelistEntry | null {
+  isInWhitelist(agentId: string): WhitelistEntry | null {
     const entry = Array.from(this.whitelist.values()).find(
-      w => w.whatsappNumber === whatsapp && w.agentId === agentId && w.isActive
+      w => w.agentId.toLowerCase() === agentId.toLowerCase() && w.isActive
     )
     return entry || null
   }
 
-  addWhitelistEntry(name: string, whatsappNumber: string, agentId: string): WhitelistEntry {
+  addWhitelistEntry(name: string, agentId: string): WhitelistEntry {
     const id = `wl-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-    const entry: WhitelistEntry = { id, name, whatsappNumber, agentId, isActive: true }
+    const entry: WhitelistEntry = { id, name, agentId, isActive: true }
     this.whitelist.set(id, entry)
     return entry
   }
 
   // Bulk add whitelist entries
-  addBulkWhitelist(entries: { name: string; whatsappNumber: string; agentId: string }[]): WhitelistEntry[] {
+  addBulkWhitelist(entries: { name: string; agentId: string }[]): WhitelistEntry[] {
     const added: WhitelistEntry[] = []
     entries.forEach(e => {
       // Check if already exists
       const existing = Array.from(this.whitelist.values()).find(
-        w => w.whatsappNumber === e.whatsappNumber && w.agentId === e.agentId
+        w => w.agentId.toLowerCase() === e.agentId.toLowerCase()
       )
       if (!existing) {
-        added.push(this.addWhitelistEntry(e.name, e.whatsappNumber, e.agentId))
+        added.push(this.addWhitelistEntry(e.name, e.agentId))
       }
     })
     return added
@@ -195,14 +193,13 @@ class Database {
   }
 
   // ===== SPIN RECORDS (Anti-Abuse) =====
-  hasSpun(whatsappNumber: string, agentId: string): boolean {
+  hasSpun(agentId: string): boolean {
     return Array.from(this.spinRecords.values()).some(
-      r => r.whatsappNumber === whatsappNumber && r.agentId === agentId
+      r => r.agentId.toLowerCase() === agentId.toLowerCase()
     )
   }
 
   addSpinRecord(
-    whatsappNumber: string,
     agentId: string,
     prizeId: string,
     prizeName: string,
@@ -213,7 +210,6 @@ class Database {
     const id = `spin-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
     const record: SpinRecord = {
       id,
-      whatsappNumber,
       agentId,
       prizeId,
       prizeName,
