@@ -16,6 +16,7 @@ type SpinResult = {
   claimId: string
   spunAt: string
   message: string
+  poolRemaining: number
 }
 
 // ===== FINGERPRINT UTILS =====
@@ -214,10 +215,8 @@ export default function LuckyWheelPage() {
   const [eventTitle, setEventTitle] = useState('🎡 Lucky Wheel Event')
   const [isLoading, setIsLoading] = useState(true)
 
-  const [whatsapp, setWhatsapp] = useState('')
   const [agentId, setAgentId] = useState('')
   const [isChecking, setIsChecking] = useState(false)
-  const [isSpinning, setIsSpinning] = useState(false)
   const [hasSpun, setHasSpun] = useState(false)
   const [error, setError] = useState('')
   const [result, setResult] = useState<SpinResult | null>(null)
@@ -240,8 +239,8 @@ export default function LuckyWheelPage() {
   }, [])
 
   const handleLogin = async () => {
-    if (!whatsapp.trim() || !agentId.trim()) {
-      setError('Sila isi semua ruangan')
+    if (!agentId.trim()) {
+      setError('Sila isi ruangan Agent ID')
       return
     }
     setIsChecking(true)
@@ -250,7 +249,7 @@ export default function LuckyWheelPage() {
       const res = await fetch('/api/spin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ whatsappNumber: whatsapp.trim(), agentId: agentId.trim(), deviceFingerprint: fingerprint }),
+        body: JSON.stringify({ agentId: agentId.trim(), deviceFingerprint: fingerprint }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -259,7 +258,7 @@ export default function LuckyWheelPage() {
       }
       // Success - show result
       setHasSpun(true)
-      setResult({ prize: data.prize, claimId: data.claimId, spunAt: data.spunAt, message: data.message })
+      setResult({ prize: data.prize, claimId: data.claimId, spunAt: data.spunAt, message: data.message, poolRemaining: data.poolRemaining })
       // Animate wheel
       const targetPrizeIdx = prizes.findIndex(p => p.name === data.prize)
       const segDeg = 360 / NUM_SEGMENTS
@@ -283,7 +282,7 @@ export default function LuckyWheelPage() {
 
   const claimWhatsApp = () => {
     if (!result) return
-    const msg = `Hi admin, saya menang ${result.prize}. Nama/No WhatsApp saya: ${whatsapp}, ID Agent: ${agentId}. Saya sertakan screenshot sebagai bukti.`
+    const msg = `Hi admin, saya menang ${result.prize}. ID Agent saya: ${agentId}. Screenshot kemenangan sudah dilampirkan.`
     window.open(`https://wa.me/601133388859?text=${encodeURIComponent(msg)}`, '_blank')
   }
 
@@ -315,16 +314,6 @@ export default function LuckyWheelPage() {
           {!hasSpun ? (
             <>
               <h2 style={{ color: '#ffd700', fontSize: '18px', fontWeight: 800, marginBottom: '16px' }}>🔐 Sila Isi Ruangan</h2>
-              <div style={{ marginBottom: '14px' }}>
-                <label style={{ display: 'block', marginBottom: '7px', fontSize: '12px', color: 'rgba(255,255,255,0.7)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>No WhatsApp</label>
-                <input
-                  type="tel"
-                  value={whatsapp}
-                  onChange={e => setWhatsapp(e.target.value)}
-                  placeholder="Contoh: 01133388859"
-                  style={{ width: '100%', padding: '14px 16px', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.4)', color: '#fff', fontSize: '16px', outline: 'none', boxSizing: 'border-box' }}
-                />
-              </div>
               <div style={{ marginBottom: '18px' }}>
                 <label style={{ display: 'block', marginBottom: '7px', fontSize: '12px', color: 'rgba(255,255,255,0.7)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>ID Agent</label>
                 <input
@@ -369,13 +358,13 @@ export default function LuckyWheelPage() {
             <button
               className="btn-red"
               onClick={handleLogin}
-              disabled={isChecking || isLoading || !whatsapp.trim() || !agentId.trim()}
+              disabled={isChecking || isLoading || !agentId.trim()}
               style={{ fontSize: '20px', padding: '18px 48px', animation: hasSpun ? 'none' : 'bounce 2s ease-in-out infinite' }}
             >
               {isChecking ? <><span className="spinner spinner-white" /> Processing...</> : '🎰 PUTAR SEKARANG!'}
             </button>
             <p style={{ marginTop: '10px', fontSize: '12px', color: 'rgba(255,255,255,0.35)' }}>
-              {whatsapp.trim() && agentId.trim() ? 'Tekan untuk spin!' : 'Isi ruangan di atas dulu'}
+              {agentId.trim() ? 'Tekan untuk spin!' : 'Isi ruangan Agent ID dulu'}
             </p>
           </div>
         )}
